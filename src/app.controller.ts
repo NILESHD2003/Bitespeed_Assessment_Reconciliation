@@ -6,7 +6,16 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  getLandingDetails() {
+    return {
+      message: 'Welcome to the Bitespeed Assessment API',
+      instructions: 'Use the /identify endpoint to identify users.',
+      developedBy: 'Nilesh Deshpande [nileshdeshpandework@gmail.com]'
+    };
+  }
+
+  @Get('/health')
+  getHealth(): { status: string; message: string } {
+    return this.appService.getHealth();
   }
 }
