@@ -40,7 +40,10 @@ export class IdentityService {
     email?: string;
     phoneNumber?: string;
   }) {
-    const matchingData = await this.contactRepository.findContactByEmailOrPhone(email, phoneNumber);
+    const matchingData = await this.contactRepository.findContactByEmailOrPhone(
+      email,
+      phoneNumber,
+    );
 
     if (matchingData.length === 0) {
       return [];
@@ -59,7 +62,26 @@ export class IdentityService {
       primaryContactId = matchingData[0].linkedId!;
     }
 
-    const allContacts = await this.contactRepository.findContactByPrimaryId(primaryContactId);
+    const allContacts =
+      await this.contactRepository.findContactByPrimaryId(primaryContactId);
+
+    // check if anyContact that has both email and phone number in same else handle new secondary contact
+
+    const emails = new Set(allContacts.map((c) => c.email).filter(Boolean));
+    const phones = new Set(
+      allContacts.map((c) => c.phoneNumber).filter(Boolean),
+    );
+
+    const emailExists = email && emails.has(email);
+    const phoneExists = phoneNumber && phones.has(phoneNumber);
+
+    if ((email && !emailExists) || (phoneNumber && !phoneExists)) {
+      const newSecondaryContact = await this.handleNewSecondary(
+        { email, phoneNumber },
+        primaryContactId,
+      );
+      allContacts.push(newSecondaryContact);
+    }
 
     return allContacts;
   }
@@ -75,6 +97,19 @@ export class IdentityService {
       email: email ? email : undefined,
       phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
     });
+  }
+
+  handleNewSecondary(
+    { email, phoneNumber }: { email?: string; phoneNumber?: string },
+    primaryContactId: number,
+  ) {
+    return this.contactRepository.createNewSecondaryContact(
+      {
+        email: email ? email : undefined,
+        phoneNumber: phoneNumber ? String(phoneNumber) : undefined,
+      },
+      primaryContactId,
+    );
   }
 
   async identifyUser(dto: IdentifyDto) {

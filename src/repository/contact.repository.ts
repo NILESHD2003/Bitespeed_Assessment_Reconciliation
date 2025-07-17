@@ -18,7 +18,7 @@ export class ContactRepository {
     }
 
     async createNewSecondaryContact(data: {email?: string; phoneNumber?: string}, primaryContactId: number) {
-        const newContact = await this.prisma.contact.create({
+        return this.prisma.contact.create({
           data: {
                 email: data.email || null,
                 phoneNumber: data.phoneNumber || null,
