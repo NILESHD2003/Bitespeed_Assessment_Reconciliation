@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, NotFoundException, Post } from '@nestjs/common';
 import { IdentifyDto } from 'src/dto/identify.dto';
 import { IdentityService } from './identity.service';
 
@@ -9,7 +9,7 @@ export class IdentityController {
     @Post()
     async identify(@Body() body: IdentifyDto) {
         if (!body.email && !body.phoneNumber) {
-            throw new Error('At least one of email or phoneNumber must be provided.');
+            throw new NotFoundException('At least one of email or phoneNumber must be provided.');
         }
 
         return this.identityService.identifyUser(body);

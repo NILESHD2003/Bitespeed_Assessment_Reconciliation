@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { IdentifyDto } from 'src/dto/identify.dto';
 import { ContactRepository } from '../repository/contact.repository';
 
@@ -38,7 +38,9 @@ export class IdentityService {
     // way to fix
 
     // fetch contact with primaryIds
-    const idA = await this.contactRepository.findContactByPrimaryId(Array.from(primaryIds)[0]);
+    const idA = await this.contactRepository.findContactByPrimaryId(
+      Array.from(primaryIds)[0],
+    );
 
     const idB = await this.contactRepository.findContactByPrimaryId(
       Array.from(primaryIds)[1],
@@ -49,11 +51,9 @@ export class IdentityService {
       throw new Error('Primary contacts not found for merge.');
     }
 
-    const electedPrimary =
-      idA.createdAt < idB.createdAt ? idA : idB;
+    const electedPrimary = idA.createdAt < idB.createdAt ? idA : idB;
 
-    const demotedPrimary =
-      electedPrimary.id === idA.id ? idB : idA;  
+    const demotedPrimary = electedPrimary.id === idA.id ? idB : idA;
 
     // console.log('Elected primary contact:', electedPrimary.id);
 
@@ -69,12 +69,15 @@ export class IdentityService {
 
     // find all secondary contact linked to demoted and update demotedSecondary contacts to link to the new elected primary
 
-    await this.contactRepository.findContactByLinkedIdAndUpdate(demotedPrimary.id, {
-      linkedId: electedPrimary.id,
-    });
+    await this.contactRepository.findContactByLinkedIdAndUpdate(
+      demotedPrimary.id,
+      {
+        linkedId: electedPrimary.id,
+      },
+    );
 
     //populate the response with the new primary and all secondary contacts and return resp
-    
+
     const allContacts = await this.contactRepository.findContactsByPrimaryId(
       electedPrimary.id,
     );
@@ -180,39 +183,38 @@ export class IdentityService {
   }
 
   async identifyUser(dto: IdentifyDto) {
-    // cases to cover
-    // 1. If new phone and email -> create new contact with primary
-    const isExistingContact = await this.findMatchingContact({
-      email: dto.email ? dto.email : undefined,
-      phoneNumber: dto.phoneNumber ? String(dto.phoneNumber) : undefined,
-    });
-
-    if (isExistingContact.length > 0) {
-      return this.responseMapperUtil(isExistingContact);
-    }
-
-    if (isExistingContact.length === 0) {
-      const newPrimaryContact = await this.handleNewPrimary({
+    try {
+      // cases to cover
+      // 1. If new phone and email -> create new contact with primary
+      const isExistingContact = await this.findMatchingContact({
         email: dto.email ? dto.email : undefined,
         phoneNumber: dto.phoneNumber ? String(dto.phoneNumber) : undefined,
       });
 
-      // console.log('newPrimaryContact', newPrimaryContact);
+      if (isExistingContact.length > 0) {
+        return this.responseMapperUtil(isExistingContact);
+      }
 
-      return this.responseMapperUtil([newPrimaryContact]);
+      if (isExistingContact.length === 0) {
+        const newPrimaryContact = await this.handleNewPrimary({
+          email: dto.email ? dto.email : undefined,
+          phoneNumber: dto.phoneNumber ? String(dto.phoneNumber) : undefined,
+        });
+
+        // console.log('newPrimaryContact', newPrimaryContact);
+
+        return this.responseMapperUtil([newPrimaryContact]);
+      }
+
+      // 2. If only email or phone exists -> create secondary contact and link to primary
+
+      // 3. If both email and phone exist -> return consolidated data -> projection {primaryContactId, emails[], phoneNumbers[], secondaryContactIds[]}
+
+      // 4. If email in one contact and phone in another -> merge keeping older primary and convert other primary to secondary
+
+      // 5. Email and phone are from same secondary refer primary
+    } catch (error) {
+      throw new InternalServerErrorException('Error identifying user: ' + error.message);
     }
-
-    // 2. If only email or phone exists -> create secondary contact and link to primary
-
-    // 3. If both email and phone exist -> return consolidated data -> projection {primaryContactId, emails[], phoneNumbers[], secondaryContactIds[]}
-
-    // 4. If email in one contact and phone in another -> merge keeping older primary and convert other primary to secondary
-
-    // 5. Email and phone are from same secondary refer primary
-
-    return {
-      message: 'Controller & Service are working',
-      received: dto,
-    };
   }
 }
