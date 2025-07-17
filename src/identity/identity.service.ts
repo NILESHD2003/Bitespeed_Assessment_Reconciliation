@@ -33,6 +33,24 @@ export class IdentityService {
     return respose;
   }
 
+  async handleDualMergeProblem(primaryIds: Set<number>) {
+    console.log('Dual merge problem detected with primaryIds:', primaryIds);
+    // way to fix
+
+    // fetch contact with primaryIds
+
+    // elect the oldest contact as primary
+
+    // demote the rest to secondary
+
+    // find all secondary contact linked to demoted
+
+    // update demotedSecondary contacts to link to the new elected primary
+
+    //populate the response with the new primary and all secondary contacts and return resp
+    return [];
+  }
+
   async findMatchingContact({
     email,
     phoneNumber,
@@ -44,6 +62,24 @@ export class IdentityService {
       email,
       phoneNumber,
     );
+
+    // check for dual merge problem
+    const primaryIds = new Set<number>();
+
+    for (const contact of matchingData) {
+      if (contact.linkPrecedence === 'PRIMARY') {
+        primaryIds.add(contact.id);
+      } else if (contact.linkedId) {
+        primaryIds.add(contact.linkedId);
+      }
+    }
+
+    console.log('primaryIds', primaryIds);
+
+    if (primaryIds.size > 1) {
+      // dual merge problem
+      return this.handleDualMergeProblem(primaryIds);
+    }
 
     if (matchingData.length === 0) {
       return [];
