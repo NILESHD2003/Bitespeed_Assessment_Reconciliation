@@ -34,21 +34,52 @@ export class IdentityService {
   }
 
   async handleDualMergeProblem(primaryIds: Set<number>) {
-    console.log('Dual merge problem detected with primaryIds:', primaryIds);
+    // console.log('Dual merge problem detected with primaryIds:', primaryIds);
     // way to fix
 
     // fetch contact with primaryIds
+    const idA = await this.contactRepository.findContactByPrimaryId(Array.from(primaryIds)[0]);
+
+    const idB = await this.contactRepository.findContactByPrimaryId(
+      Array.from(primaryIds)[1],
+    );
 
     // elect the oldest contact as primary
+    if (!idA || !idB) {
+      throw new Error('Primary contacts not found for merge.');
+    }
+
+    const electedPrimary =
+      idA.createdAt < idB.createdAt ? idA : idB;
+
+    const demotedPrimary =
+      electedPrimary.id === idA.id ? idB : idA;  
+
+    // console.log('Elected primary contact:', electedPrimary.id);
 
     // demote the rest to secondary
+    const demotedSecondaryData =
+      await this.contactRepository.findContactByPrimaryIdAndUpdate(
+        demotedPrimary.id,
+        {
+          linkPrecedence: 'SECONDARY',
+          linkedId: electedPrimary.id,
+        },
+      );
 
-    // find all secondary contact linked to demoted
+    // find all secondary contact linked to demoted and update demotedSecondary contacts to link to the new elected primary
 
-    // update demotedSecondary contacts to link to the new elected primary
+    await this.contactRepository.findContactByLinkedIdAndUpdate(demotedPrimary.id, {
+      linkedId: electedPrimary.id,
+    });
 
     //populate the response with the new primary and all secondary contacts and return resp
-    return [];
+    
+    const allContacts = await this.contactRepository.findContactsByPrimaryId(
+      electedPrimary.id,
+    );
+
+    return allContacts;
   }
 
   async findMatchingContact({
@@ -74,7 +105,7 @@ export class IdentityService {
       }
     }
 
-    console.log('primaryIds', primaryIds);
+    // console.log('primaryIds', primaryIds);
 
     if (primaryIds.size > 1) {
       // dual merge problem
@@ -99,7 +130,7 @@ export class IdentityService {
     }
 
     const allContacts =
-      await this.contactRepository.findContactByPrimaryId(primaryContactId);
+      await this.contactRepository.findContactsByPrimaryId(primaryContactId);
 
     // check if anyContact that has both email and phone number in same else handle new secondary contact
 
@@ -166,7 +197,7 @@ export class IdentityService {
         phoneNumber: dto.phoneNumber ? String(dto.phoneNumber) : undefined,
       });
 
-      console.log('newPrimaryContact', newPrimaryContact);
+      // console.log('newPrimaryContact', newPrimaryContact);
 
       return this.responseMapperUtil([newPrimaryContact]);
     }

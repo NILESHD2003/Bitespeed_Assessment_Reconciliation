@@ -6,29 +6,14 @@ import { Prisma } from '../../generated/prisma';
 export class ContactRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    async createNewPrimaryContact(data: {email?: string; phoneNumber?: string}) {
-        return this.prisma.contact.create({
-            data: {
-                email: data.email || null,
-                phoneNumber: data.phoneNumber || null,
-                linkPrecedence: 'PRIMARY',
-                linkedId: null,
-            },
-        });
-    }
-
-    async createNewSecondaryContact(data: {email?: string; phoneNumber?: string}, primaryContactId: number) {
-        return this.prisma.contact.create({
-          data: {
-                email: data.email || null,
-                phoneNumber: data.phoneNumber || null,
-                linkPrecedence: 'SECONDARY',
-                linkedId: primaryContactId,
-            },  
+    async findContactByPrimaryId(primaryContactId: number) {
+        return this.prisma.contact.findFirst({
+            where: { id: primaryContactId },
+            orderBy: { createdAt: 'asc' },
         })
     }
 
-    async findContactByPrimaryId(primaryContactId: number) {
+    async findContactsByPrimaryId(primaryContactId: number) {
         const data = await this.prisma.contact.findMany({
             where: {
                 OR: [
@@ -57,5 +42,45 @@ export class ContactRepository {
         });
 
         return data;
+    }
+
+    async findContactByPrimaryIdAndUpdate(primaryContactId: number, data) {
+        return this.prisma.contact.update({
+            where: { id: primaryContactId },
+            data: {
+                ...data,
+            },
+        });
+    }
+
+    async findContactByLinkedIdAndUpdate(linkedId: number, data) {
+        return this.prisma.contact.updateMany({
+            where: { linkedId },
+            data: {
+                ...data,
+            },
+        })
+    }
+
+    async createNewPrimaryContact(data: {email?: string; phoneNumber?: string}) {
+        return this.prisma.contact.create({
+            data: {
+                email: data.email || null,
+                phoneNumber: data.phoneNumber || null,
+                linkPrecedence: 'PRIMARY',
+                linkedId: null,
+            },
+        });
+    }
+
+    async createNewSecondaryContact(data: {email?: string; phoneNumber?: string}, primaryContactId: number) {
+        return this.prisma.contact.create({
+          data: {
+                email: data.email || null,
+                phoneNumber: data.phoneNumber || null,
+                linkPrecedence: 'SECONDARY',
+                linkedId: primaryContactId,
+            },  
+        })
     }
 }
