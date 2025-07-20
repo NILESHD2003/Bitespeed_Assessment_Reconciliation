@@ -58,23 +58,23 @@ export class IdentityService {
     // console.log('Elected primary contact:', electedPrimary.id);
 
     // demote the rest to secondary
-    const demotedSecondaryData =
-      await this.contactRepository.findContactByPrimaryIdAndUpdate(
+    await this.contactRepository.prisma.$transaction(async (prisma) => {
+      (this.contactRepository.findContactByPrimaryIdAndUpdate(
         demotedPrimary.id,
         {
           linkPrecedence: 'SECONDARY',
           linkedId: electedPrimary.id,
         },
-      );
+      ),
+        this.contactRepository.findContactByLinkedIdAndUpdate(
+          demotedPrimary.id,
+          {
+            linkedId: electedPrimary.id,
+          },
+        ));
+    });
 
     // find all secondary contact linked to demoted and update demotedSecondary contacts to link to the new elected primary
-
-    await this.contactRepository.findContactByLinkedIdAndUpdate(
-      demotedPrimary.id,
-      {
-        linkedId: electedPrimary.id,
-      },
-    );
 
     //populate the response with the new primary and all secondary contacts and return resp
 
@@ -214,7 +214,9 @@ export class IdentityService {
 
       // 5. Email and phone are from same secondary refer primary
     } catch (error) {
-      throw new InternalServerErrorException('Error identifying user: ' + error.message);
+      throw new InternalServerErrorException(
+        'Error identifying user: ' + error.message,
+      );
     }
   }
 }
